@@ -1,0 +1,175 @@
+---
+# Définition des variables communes
+- name: Example Simple Variable
+  hosts: all
+  become: yes
+  vars:
+    i0: eth0
+    i1: eth1
+    res1: 1.0.0.
+    res2: 2.0.0.
+    res3: 3.0.0.
+    netmask: 255.255.255.0
+
+# Tâches pour la configuration de H1
+- name: Configuration de H1
+  hosts: H1
+  become: true
+  tasks:
+    - name: Définir les variables pour H1
+      set_fact:
+        i0: eth0
+        res1: 1.0.0.
+        netmask: 255.255.255.0
+
+    - name: Créer le fichier de configuration pour l'interface eth0 sur H1
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i0 }}"
+        content: |
+          auto {{ i0 }}
+          iface {{ i0 }} inet static
+          address {{ res1 }}3
+          netmask {{ netmask }}
+          gateway {{ res1 }}1
+          post-up ip link set {{ i0 }} up
+          #made with modular
+
+    - name: Redémarrer le service networking
+      service:
+        name: networking
+        state: restarted
+
+- name: Configuration de H2
+  hosts: H2
+  become: true
+  tasks:
+    - name: Définir les variables pour H2
+      set_fact:
+        i0: eth0
+        res3: 3.0.0.
+        netmask: 255.255.255.0
+    
+    - name: Créer le fichier de configuration pour l'interface eth0 sur H2
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i0 }}"
+        content: |
+          auto {{ i0 }}
+          iface {{ i0 }} inet static
+          address {{ res3 }}3
+          netmask {{ netmask }}
+          gateway {{ res3 }}2
+          post-up ip link set {{ i0 }} up
+          #made with modular
+
+    - name: Redémarrer le service networking
+      service:
+        name: networking
+        state: restarted
+
+- name: Configuration de R1
+  hosts: R1
+  become: true
+  tasks:
+    - name: Définir les variables pour R1
+      set_fact:
+        i0: eth0
+        i1: eth1
+        res1: 1.0.0.
+        res2: 2.0.0.
+        res3: 3.0.0.
+        netmask: 255.255.255.0
+
+    - name: Créer le fichier de configuration pour l'interface eth1 sur R1
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i1 }}"
+        content: |
+          auto {{ i1 }}
+          iface {{ i1 }} inet static
+          address {{ res1 }}1
+          netmask {{ netmask }}
+          post-up ip link set {{ i1 }} up
+          #made with modular
+
+    - name: Créer le fichier de configuration pour l'interface {{ i0 }} sur R1
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i0 }}"
+        content: |
+          auto {{ i0 }}
+          iface {{ i0 }} inet static
+          address {{ res2 }}1
+          netmask {{ netmask }}
+          post-up ip link set {{ i0 }} up
+          up ip route add {{ res3 }}0/24 via {{ res2 }}2 dev {{ i0 }}
+          #made with modular
+
+    - name: Redémarrer le service networking
+      service:
+        name: networking
+        state: restarted
+
+- name: Configuration de R2
+  hosts: R2
+  become: true
+  tasks:
+    - name: Définir les variables pour R2
+      set_fact:
+        i0: eth0
+        i1: eth1
+        res1: 1.0.0.
+        res2: 2.0.0.
+        res3: 3.0.0.
+        netmask: 255.255.255.0
+   
+    - name: Créer le fichier de configuration pour l'interface eth1 sur R2
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i1 }}"
+        content: |
+          auto {{ i1 }}
+          iface {{ i1 }} inet static
+          address {{ res3 }}2
+          netmask {{ netmask }}
+          post-up ip link set {{ i1 }} up
+          #made with modular
+
+    - name: Créer le fichier de configuration pour l'interface eth0 sur R2
+      copy:
+        dest: "/etc/network/interfaces.d/{{ i0 }}"
+        content: |
+          auto {{ i0 }}
+          iface {{ i0 }} inet static
+          address {{ res2 }}2
+          netmask {{ netmask }}
+          post-up ip link set {{ i0 }} up
+          up ip route add {{ res1 }}0/24 via {{ res2 }}1 dev {{ i0 }}
+          #made with modular
+
+    - name: Redémarrer le service networking
+      service:
+        name: networking
+        state: restarted
+
+# Exécuter systemctl cat networking sur mon laptop
+- name: Faire systemctl cat networking sur mon laptop
+  hosts: localhost
+  tasks:
+    - name: Exécuter systemctl cat networking
+      shell: systemctl cat networking
+      register: systemctl_output
+
+    - name: Afficher la sortie de la commande systemctl cat networking
+      debug:
+        var: systemctl_output.stdout_lines
+
+# Test de ping entre H1 et H2
+- name: Vérifier la connectivité de H1 à H2
+  hosts: H1
+  tasks:
+    - name: Ping de H1 à H2
+      ping:
+        data: "Ping test"
+      register: ping_result
+
+    - name: Afficher le résultat du ping
+      debug:
+        msg: "{{ ping_result }}"
+

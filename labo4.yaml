@@ -1,0 +1,219 @@
+- name: Configuration de H1
+  hosts: H1
+  become: true
+  tasks:        
+    - name: Définir les variables pour H1
+      set_fact:
+        interface_name: eth0
+        interface_address: 1.0.0.3
+        interface_netmask: 255.255.255.0
+        interface_gateway: 1.0.0.1
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth0
+      shell: |
+        echo "auto {{ interface_name }}" > /etc/network/interfaces.d/{{ interface_name }}
+        echo "iface {{ interface_name }} inet static" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "address {{ interface_address }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "netmask {{ interface_netmask }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "gateway {{ interface_gateway }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "post-up ip link set {{ interface_name }} up" >> /etc/network/interfaces.d/{{ interface_name }}
+
+      register: filleth0
+
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth0.stdout_lines
+    - name: Remove old eth0 and restart networking
+      shell: |
+        ifup {{ interface_name }}
+        systemctl restart networking         
+      
+      register: netrestart
+      ignore_errors: yes
+
+    - name: Afficher la sortie de la commande de restart
+      debug:
+        var: netrestart.stdout_lines
+
+- name: Configuration de H2
+  hosts: H2
+  become: true
+  tasks:        
+    - name: Définir les variables pour H2
+      set_fact:
+        interface_name: eth0
+        interface_address: 3.0.0.3
+        interface_netmask: 255.255.255.0
+        interface_gateway: 3.0.0.2
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth0
+      shell: |
+        echo "auto {{ interface_name }}" > /etc/network/interfaces.d/{{ interface_name }}
+        echo "iface {{ interface_name }} inet static" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "address {{ interface_address }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "netmask {{ interface_netmask }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "gateway {{ interface_gateway }}" >> /etc/network/interfaces.d/{{ interface_name }}
+        echo "post-up ip link set {{ interface_name }} up" >> /etc/network/interfaces.d/{{ interface_name }}
+
+      register: filleth0
+
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth0.stdout_lines
+    - name: Remove old eth0 and restart networking
+      shell: |
+        ifup {{ interface_name }}
+        systemctl restart networking   
+                
+      register: netrestart
+      ignore_errors: yes
+
+    - name: Afficher la sortie de la commande de restart
+      debug:
+        var: netrestart.stdout_lines
+
+- name: Configuration de R1
+  hosts: R1
+  become: true
+  tasks:        
+    - name: Définir les variables pour R1
+      set_fact:
+        interface_host: eth1
+        interface_host_address: 1.0.0.1
+        interface_host_netmask: 255.255.255.0
+        interface_out: eth0
+        interface_out_address: 2.0.0.1
+        interface_out_netmask: 255.255.255.0
+        network_to_reach: "3.0.0.0/24" 
+        gateway_ip: "2.0.0.2"   
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth1
+
+      shell: |
+        echo "auto {{ interface_host }}" > /etc/network/interfaces.d/{{ interface_host }}
+        echo "iface {{ interface_host }} inet static" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "address {{ interface_host_address }}" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "netmask {{ interface_host_netmask }}" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "post-up ip link set {{ interface_host }} up" >> /etc/network/interfaces.d/{{ interface_host }}
+
+      register: filleth1     
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth1.stdout_lines
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth0
+
+      shell: |
+        echo "auto {{ interface_out }}" > /etc/network/interfaces.d/{{ interface_out }}
+        echo "iface {{ interface_out }} inet static" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "address {{ interface_out_address }}" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "netmask {{ interface_out_netmask }}" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "post-up ip link set {{ interface_out }} up" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "up ip route add {{ network_to_reach }} via {{ gateway_ip }} dev {{ interface_out }}" >> /etc/network/interfaces.d/{{ interface_out }}
+ 
+      register: filleth0
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth0.stdout_lines         
+
+    - name: restart networking
+      shell: |
+        ifup {{ interface_host }}     
+        ifup {{ interface_out }}       
+        systemctl restart networking               
+      
+      register: netrestart
+      ignore_errors: yes
+
+    - name: Afficher la sortie de la commande de restart
+      debug:
+        var: netrestart.stdout_lines
+
+- name: Configuration de R2
+  hosts: R2
+  become: true
+  tasks:        
+    - name: Définir les variables pour R2
+      set_fact:
+        interface_host: eth1
+        interface_host_address: 3.0.0.2
+        interface_host_netmask: 255.255.255.0
+        interface_out: eth0
+        interface_out_address: 2.0.0.2
+        interface_out_netmask: 255.255.255.0
+        network_to_reach: "1.0.0.0/24"
+        gateway_ip: "2.0.0.1"   
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth1
+
+      shell: |
+        echo "auto {{ interface_host }}" > /etc/network/interfaces.d/{{ interface_host }}
+        echo "iface {{ interface_host }} inet static" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "address {{ interface_host_address }}" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "netmask {{ interface_host_netmask }}" >> /etc/network/interfaces.d/{{ interface_host }}
+        echo "post-up ip link set {{ interface_host }} up" >> /etc/network/interfaces.d/{{ interface_host }}
+
+      register: filleth1     
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth1.stdout_lines
+
+    - name: Remplir le fichier /etc/network/interfaces.d/eth0
+
+      shell: |
+        echo "auto {{ interface_out }}" > /etc/network/interfaces.d/{{ interface_out }}
+        echo "iface {{ interface_out }} inet static" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "address {{ interface_out_address }}" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "netmask {{ interface_out_netmask }}" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "post-up ip link set {{ interface_out }} up" >> /etc/network/interfaces.d/{{ interface_out }}
+        echo "up ip route add {{ network_to_reach }} via {{ gateway_ip }} dev {{ interface_out }}" >> /etc/network/interfaces.d/{{ interface_out }}
+
+      register: filleth0
+    - name: Afficher la sortie de la commande de remplissage
+      debug:
+        var: filleth0.stdout_lines
+
+    - name: restart networking
+      shell: |
+        ifup {{ interface_host }}     
+        ifup {{ interface_out }}       
+        systemctl restart networking                  
+      
+      register: netrestart
+      ignore_errors: yes
+
+    - name: Afficher la sortie de la commande de restart
+      debug:
+        var: netrestart.stdout_lines
+
+#cat networking
+- name: Faire systemctl cat networking sur mon laptop
+  hosts: localhost
+  tasks:
+    - name: exec systemctl cat networking
+      shell: systemctl cat networking
+      register: systemctl_output
+
+    - name: Afficher la sortie de la commande systemctl cat networking
+      debug:
+        var: systemctl_output.stdout_lines
+
+#ping test h1 h2
+- name: Vérifier que H1 peut ping H2
+  hosts: H1
+  tasks:
+    - name: Vérifier la connectivité de H1 à H2
+      shell: ping 3.0.0.3 -q -c 1
+      register: ping_result
+
+    - name: Afficher le résultat du ping
+      debug:
+        msg: "Ping de H1 à H2 : {{ ping_result }}"
+
+#- name: Verifier avec systemd module ansible service    
+#  tasks:
+
+
+
+
+

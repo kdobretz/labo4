@@ -1,0 +1,8 @@
+hosts:
+  hosts:
+    H1:
+    H2:
+routers:
+  hosts:
+    R1:
+    R2:
